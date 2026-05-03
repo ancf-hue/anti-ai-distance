@@ -1,0 +1,15 @@
+# robots.txt для Anti-AI Distance
+# https://anti-ai-distance.vercel.app
+
+User-agent: *
+Allow: /
+
+# Запрещаем индексацию служебных страниц (если появятся)
+Disallow: /private/
+Disallow: /admin/
+
+# Указываем путь к карте сайта
+Sitemap: https://anti-ai-distance.vercel.app/sitemap.xml
+
+# Хост (опционально, для некоторых поисковых систем)
+Host: https://anti-ai-distance.vercel.app
