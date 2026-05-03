@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Анти-ИИ Расстояние</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
+        
+        /* ===== СТИЛИ ДЛЯ ЗАСТАВКИ (9:16) ===== */
+        .intro-screen{position:fixed;top:0;left:0;width:100%;height:100%;z-index:1000;background:#000;display:flex;justify-content:center;align-items:center;}
+        .intro-container{position:relative;width:100vw;height:100vh;max-width:450px;max-height:800px;aspect-ratio:9/16;background:#000;overflow:hidden;margin:auto;}
+        .intro-layers{position:absolute;top:0;left:0;width:100%;height:100%;}
+        .intro-layers img,.intro-layers video{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;display:block;}
+        .intro-layers img{z-index:2}
+        .intro-layers video{z-index:1;transform:none}
+        .sound-btn{position:absolute;top:18px;left:18px;z-index:30;background:rgba(0,0,0,0.7);backdrop-filter:blur(12px);border-radius:60px;border:1px solid rgba(255,255,255,0.4);padding:12px 26px;cursor:pointer;display:flex;align-items:center;gap:12px;font-weight:bold;font-size:1.4rem;color:white;transition:0.1s ease;font-family:system-ui;}
+        .sound-btn:active{transform:scale(0.96);}
+        .sound-btn .ico{font-size:1.9rem;}
+        .sound-btn .txt{font-size:1.25rem;}
+        @media (max-width:480px){.sound-btn{padding:8px 20px;}.sound-btn .ico{font-size:1.6rem;}.sound-btn .txt{font-size:1.1rem;}}
+        
+        /* ===== СТИЛИ ДЛЯ ОСНОВНОГО ПРИЛОЖЕНИЯ ===== */
+        .main-app{display:none;background:#0b1120;color:#e2e8f0;font-family:system-ui,-apple-system,sans-serif;display:flex;justify-content:center;min-height:100vh;padding:16px;}
+        .app{max-width:480px;width:100%;background:rgba(18,25,40,0.8);backdrop-filter:blur(20px);border-radius:40px;padding:20px 16px 24px;box-shadow:0 20px 40px rgba(0,0,0,0.4),0 0 0 1px rgba(255,255,255,0.1);}
+        
+        /* HEADER */
+        .header{text-align:center;margin-bottom:16px}
+        .header h1{font-size:1.5rem;font-weight:700;background:linear-gradient(135deg,#fff,#7dd3fc);-webkit-background-clip:text;background-clip:text;color:transparent}
+        
+        /* CAMERA */
+        .camera{position:relative;background:#000;border-radius:24px;overflow:hidden;aspect-ratio:3/4;margin-bottom:14px;border:1px solid rgba(255,255,255,0.15)}
+        .camera video,.camera canvas{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+        .camera canvas{z-index:10;pointer-events:none}
+        
+        /* DISTANCE DISPLAY */
+        .dist-box{text-align:center;padding:14px;background:rgba(56,189,248,0.12);border-radius:16px;margin-bottom:12px;transition:all 0.2s}
+        .dist-box.pulse{transform:scale(1.02);box-shadow:0 0 25px rgba(56,189,248,0.3)}
+        .dist-val{font-size:2.2rem;font-weight:800;color:#38bdf8;font-family:monospace;display:flex;align-items:center;justify-content:center;gap:8px}
+        .dist-unit{font-size:1rem;color:#94a3b8}
+        .dist-hint{font-size:0.7rem;color:#94a3b8;margin-top:4px}
+        
+        /* ТЕХНО-ИНФО */
+        .tech-info{background:rgba(30,41,59,0.5);border-radius:16px;padding:12px;margin:8px 0;border:1px solid rgba(56,189,248,0.2);font-size:0.75rem;color:#94a3b8;line-height:1.4}
+        .tech-info strong{color:#7dd3fc}
+        .tech-info .steps{margin-top:8px;padding-left:16px}
+        .tech-info .steps li{margin:4px 0}
+        
+        /* VISUAL GUIDES */
+        .guides{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:8}
+        .eye-mark{position:absolute;width:12px;height:12px;border:2px solid #22d3ee;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 8px rgba(34,211,238,0.6)}
+        
+        /* TRAFFIC LIGHT */
+        .traffic{display:flex;justify-content:center;gap:16px;margin:10px 0}
+        .light{width:48px;height:48px;border-radius:50%;background:#1e293b;box-shadow:inset 0 2px 4px rgba(0,0,0,0.3),0 0 0 1px rgba(255,255,255,0.1);transition:all 0.2s}
+        .light.red.active{background:#ef4444;box-shadow:0 0 12px #ef4444}
+        .light.yellow.active{background:#f59e0b;box-shadow:0 0 12px #f59e0b}
+        .light.green.active{background:#10b981;box-shadow:0 0 12px #10b981}
+        
+        /* STATUS */
+        .status{text-align:center;font-weight:600;font-size:0.95rem;padding:10px 14px;border-radius:40px;margin:10px 0;background:rgba(0,0,0,0.4);backdrop-filter:blur(8px);min-height:44px}
+        .progress{background:#1e293b;border-radius:20px;height:8px;margin:8px 0;overflow:hidden}
+        .progress-fill{height:100%;width:0%;transition:width 0.2s;background:linear-gradient(90deg,#ef4444 0%,#f59e0b 50%,#10b981 100%)}
+        
+        /* CALIBRATION */
+        .calib{background:rgba(56,189,248,0.1);border:1px solid rgba(56,189,248,0.3);border-radius:14px;padding:12px;margin:10px 0;display:none}
+        .calib.show{display:block}
+        .calib-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+        .calib-title{color:#38bdf8;font-size:0.85rem;font-weight:600}
+        .calib-close{background:none;border:none;color:#94a3b8;font-size:1.1rem;cursor:pointer}
+        .calib-row{display:flex;gap:8px;align-items:center;margin:8px 0}
+        .calib-row label{font-size:0.75rem;color:#cbd5e1;flex:1}
+        .calib-row input{width:80px;padding:6px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:#0f172a;color:#fff}
+        .calib-actions{display:flex;gap:8px;margin-top:8px}
+        .calib-actions .btn{padding:8px;font-size:0.8rem}
+        
+        /* BUTTONS */
+        .btn{width:100%;padding:14px;border:none;border-radius:40px;font-size:1rem;font-weight:600;cursor:pointer;margin:6px 0;transition:0.2s}
+        .btn:disabled{opacity:0.5;cursor:not-allowed}
+        .btn.primary{background:#3b82f6;color:#fff}
+        .btn.success{background:#10b981;color:#fff}
+        .btn.danger{background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);color:#fca5a5}
+        
+        /* SHIELD BLOCK - без заголовка */
+        .shield-block{background:linear-gradient(135deg,#0f172a,#111827);border-radius:28px;padding:16px;margin:12px 0;border:1px solid rgba(56,189,248,0.3);box-shadow:0 8px 20px rgba(0,0,0,0.3)}
+        .support-card{background:rgba(255,255,255,0.03);border-radius:20px;padding:12px;margin-top:8px}
+        .phone-number{background:#0f172a;padding:10px;border-radius:30px;display:flex;justify-content:space-between;align-items:center;margin:10px 0;border:1px solid #2d3a5e}
+        .phone-number span{font-family:monospace;font-size:1.3rem;font-weight:700;color:#38bdf8}
+        .copy-btn{background:#3b82f6;border:none;color:white;padding:6px 16px;border-radius:40px;font-size:0.8rem;font-weight:600;cursor:pointer}
+        .support-note{font-size:0.7rem;color:#94a3b8;text-align:center;margin-top:8px}
+        .projects-link{display:inline-block;background:rgba(56,189,248,0.15);color:#7dd3fc;padding:10px 16px;border-radius:28px;text-decoration:none;font-size:0.8rem;font-weight:600;margin-top:12px;text-align:center;width:100%;box-sizing:border-box}
+        
+        /* FOOTER */
+        .legal{font-size:0.65rem;text-align:center;color:#64748b;margin-top:18px;border-top:1px solid rgba(255,255,255,0.1);padding-top:14px}
+        .footer{font-size:0.6rem;text-align:center;color:#475569;margin-top:12px}
+        
+        /* TOAST */
+        .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#10b981;color:#fff;padding:10px 18px;border-radius:12px;font-size:0.8rem;opacity:0;pointer-events:none;transition:opacity 0.3s;z-index:100}
+        .toast.show{opacity:1}
+        
+        /* ЛОГОТИП */
+        .app-logo{text-align:center;margin-bottom:12px;}
+        .app-logo img{width:48px;height:48px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.3);}
+    </style>
+</head>
+<body>
+
+<!-- ЗАСТАВКА 5 СЕКУНД -->
+<div id="introScreen" class="intro-screen">
+    <div class="intro-container">
+        <div class="intro-layers">
+            <img id="introPhoto" src="frame.jpg" style="z-index:2">
+            <video id="introVideo" src="cube.mp4" muted playsinline preload="auto" style="z-index:1"></video>
+        </div>
+        <button id="soundBtn" class="sound-btn"><span class="ico">🔇</span><span class="txt">Вкл звук</span></button>
+    </div>
+</div>
+
+<!-- ОСНОВНОЕ ПРИЛОЖЕНИЕ -->
+<div id="mainApp" class="main-app" style="display:none">
+    <div class="app">
+        <div class="app-logo">
+            <img src="favicon.ico" alt="logo" width="48" height="48">
+        </div>
+        
+        <div class="header">
+            <h1>📏 Анти-ИИ Расстояние</h1>
+        </div>
+
+        <div class="camera">
+            <video id="video" autoplay playsinline muted></video>
+            <canvas id="overlay"></canvas>
+            <div class="guides" id="guides"></div>
+        </div>
+
+        <div class="dist-box" id="distBox">
+            <div class="dist-val"><span id="distVal">—</span><span class="dist-unit">см</span></div>
+            <div class="dist-hint" id="distHint">Наведите камеру на лицо</div>
+        </div>
+
+        <!-- Блок: Как определяется расстояние -->
+        <div class="tech-info">
+            <strong>🔍 Как определяется расстояние?</strong>
+            <ul class="steps">
+                <li>🎯 ИИ находит <strong>468 точек лица</strong> (MediaPipe Face Mesh)</li>
+                <li>👁️ Измеряет расстояние между <strong>углами глаз</strong> в пикселях</li>
+                <li>📐 По формуле подобия треугольников вычисляет <strong>реальное расстояние в см</strong></li>
+                <li>⚙️ Использует вашу <strong>калибровку</strong> (расстояние между глазами)</li>
+                <li>🔒 Все вычисления — <strong>только на устройстве</strong>, без интернета</li>
+            </ul>
+        </div>
+
+        <div class="traffic">
+            <div class="light red" id="red"></div>
+            <div class="light yellow" id="yellow"></div>
+            <div class="light green" id="green"></div>
+        </div>
+
+        <div class="status" id="status">🔴 Ожидание лица...</div>
+        <div class="progress"><div class="progress-fill" id="progress"></div></div>
+
+        <div class="calib" id="calibPanel">
+            <div class="calib-header">
+                <span class="calib-title">🎚️ Калибровка расстояния</span>
+                <button class="calib-close" id="calibClose">✕</button>
+            </div>
+            <div class="calib-row">
+                <label>Расстояние между глазами (см):</label>
+                <input type="number" id="eyeDistInput" step="0.1" min="4" max="10" value="6.5">
+            </div>
+            <div style="font-size:0.7rem;color:#94a3b8;margin:6px 0">
+                💡 Среднее: 6.5 см. Измерьте линейкой для точности.
+            </div>
+            <div class="calib-actions">
+                <button class="btn danger" id="calibReset">🗑️ Сброс</button>
+                <button class="btn primary" id="calibSave">✅ Применить</button>
+            </div>
+        </div>
+
+        <button class="btn" id="calibToggle" style="background:rgba(56,189,248,0.15);color:#7dd3fc">⚙️ Калибровка</button>
+        <button class="btn success" id="saveDistBtn" disabled>📌 Зафиксировать расстояние</button>
+        <button class="btn primary" id="exportBtn" disabled>📤 Экспорт замера</button>
+
+        <!-- Блок поддержки (без заголовка "Анти-ИИ Щит") -->
+        <div class="shield-block">
+            <div class="support-card">
+                <div style="font-weight:700; margin-bottom:6px">🤝 ПОДДЕРЖАТЬ ПРОЕКТ</div>
+                <div style="font-size:0.85rem; color:#cbd5e1; margin-bottom:12px">💙 Приложение бесплатное. Было и останется.</div>
+                <div style="font-size:0.8rem; margin-bottom:8px">Если проект помог вам или вашим близким — можете поддержать разработку добровольным переводом.</div>
+                <div class="phone-number">
+                    <span>📱 8-920-227-56-76</span>
+                    <button class="copy-btn" id="copyPhoneBtn">📋 Копировать номер</button>
+                </div>
+                <div class="support-note">✅ Деньги придут мгновенно. Без комиссии. Безопасно.</div>
+                <div class="support-note" style="margin-top:6px">❤️ Спасибо за поддержку!</div>
+            </div>
+            <div style="margin-top:12px; text-align:center">
+                🌟 ДРУГИЕ НАШИ ПРОЕКТЫ 🌟
+                <a href="https://ancf-hue.github.io/" target="_blank" rel="noopener noreferrer" class="projects-link">👉 https://ancf-hue.github.io/ 👈<br>Каталог бесплатных офлайн-приложений Anti-AI Shield.</a>
+            </div>
+        </div>
+
+        <div class="legal">
+            🟢 30–40 см = идеально | 🟡 25–30 / 40–50 см = допустимо | ❌ &lt;25 или &gt;50 см = поправьте положение<br>
+            Точность: ±2–3 см при калибровке. Данные только на устройстве.
+            <button class="btn danger" id="deleteBtn" style="margin-top:8px;width:100%">🗑️ Удалить все данные</button>
+        </div>
+        <div class="footer">Одно место · одно расстояние · одно освещение</div>
+    </div>
+</div>
+
+<div class="toast" id="toast">✓ Готово!</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+
+<script>
+// ========== ЗАСТАВКА ==========
+const introScreen = document.getElementById('introScreen');
+const mainApp = document.getElementById('mainApp');
+const introPhoto = document.getElementById('introPhoto');
+const introVideo = document.getElementById('introVideo');
+const soundBtn = document.getElementById('soundBtn');
+const btnIco = soundBtn.querySelector('.ico');
+const btnTxt = soundBtn.querySelector('.txt');
+
+let soundOn = false;
+let videoStarted = false;
+
+function updateSoundBtn() {
+    if(soundOn) {
+        btnIco.innerText = '🔊';
+        btnTxt.innerText = 'Звук вкл';
+    } else {
+        btnIco.innerText = '🔇';
+        btnTxt.innerText = 'Вкл звук';
+    }
+}
+
+soundBtn.onclick = () => {
+    if(soundOn) {
+        introVideo.muted = true;
+        soundOn = false;
+    } else {
+        introVideo.muted = false;
+        soundOn = true;
+        if(videoStarted && introVideo.paused) introVideo.play().catch(()=>{});
+    }
+    updateSoundBtn();
+};
+
+function switchToVideo() {
+    if(videoStarted) return;
+    videoStarted = true;
+    introVideo.style.zIndex = '2';
+    introPhoto.style.zIndex = '1';
+    introVideo.play().catch(e => console.log);
+    setTimeout(() => {
+        if(introVideo && !introVideo.ended) introVideo.pause();
+        introScreen.style.display = 'none';
+        mainApp.style.display = 'flex';
+        initMainApp();
+    }, 3000);
+}
+
+if(introPhoto.complete && introPhoto.naturalWidth) {
+    setTimeout(switchToVideo, 2000);
+} else {
+    introPhoto.onload = () => setTimeout(switchToVideo, 2000);
+    setTimeout(() => { if(!videoStarted) switchToVideo(); }, 2500);
+}
+updateSoundBtn();
+
+// ========== ОСНОВНОЕ ПРИЛОЖЕНИЕ ==========
+const videoEl = document.getElementById('video');
+const canvas = document.getElementById('overlay');
+const ctx = canvas?.getContext('2d');
+const guidesDiv = document.getElementById('guides');
+const distValSpan = document.getElementById('distVal');
+const distHintSpan = document.getElementById('distHint');
+const distBoxDiv = document.getElementById('distBox');
+const redLight = document.getElementById('red');
+const yellowLight = document.getElementById('yellow');
+const greenLight = document.getElementById('green');
+const statusDiv = document.getElementById('status');
+const progressDiv = document.getElementById('progress');
+const saveDistBtnMain = document.getElementById('saveDistBtn');
+const exportBtnMain = document.getElementById('exportBtn');
+const deleteBtnMain = document.getElementById('deleteBtn');
+const toastDiv = document.getElementById('toast');
+const calibPanelDiv = document.getElementById('calibPanel');
+const calibToggleBtn = document.getElementById('calibToggle');
+const calibCloseBtn = document.getElementById('calibClose');
+const eyeDistInputMain = document.getElementById('eyeDistInput');
+const calibSaveBtn = document.getElementById('calibSave');
+const calibResetBtn = document.getElementById('calibReset');
+const copyPhoneBtnMain = document.getElementById('copyPhoneBtn');
+
+let camera = null, faceMesh = null, cameraActive = false;
+let estimatedDistance = null, focalLength = 700;
+let eyeDistanceCm = 6.5;
+let lastDistances = [];
+const STORAGE_KEY = 'distance_v1';
+
+async function initMainApp() {
+    if (!navigator.mediaDevices?.getUserMedia) {
+        statusDiv.innerText = '❌ Камера не поддерживается';
+        return;
+    }
+    
+    faceMesh = new FaceMesh({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`});
+    faceMesh.setOptions({
+        maxNumFaces: 1,
+        refineLandmarks: true,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+    });
+    faceMesh.onResults(onResults);
+    
+    try {
+        camera = new Camera(videoEl, {
+            onFrame: async () => { await faceMesh.send({image: videoEl}); },
+            width: 640, height: 480
+        });
+        await camera.start();
+        cameraActive = true;
+    } catch (e) {
+        statusDiv.innerText = '❌ Ошибка доступа к камере';
+        console.error('Camera error:', e);
+        return;
+    }
+    
+    const savedEyeDist = localStorage.getItem(STORAGE_KEY + '_eyeDist');
+    if (savedEyeDist) {
+        eyeDistanceCm = parseFloat(savedEyeDist);
+        eyeDistInputMain.value = eyeDistanceCm;
+        calibToggleBtn.innerHTML = `✅ ${eyeDistanceCm} см`;
+    }
+    statusDiv.innerText = '🟢 Камера активна. Наведите на лицо.';
+}
+
+function onResults(results) {
+    if (!ctx || !canvas) return;
+    canvas.width = videoEl.videoWidth || 640;
+    canvas.height = videoEl.videoHeight || 480;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    guidesDiv.innerHTML = '';
+    
+    if (!results.multiFaceLandmarks?.[0]) {
+        updateDistanceUI(null);
+        return;
+    }
+    
+    const landmarks = results.multiFaceLandmarks[0];
+    const leftEye = landmarks[33];
+    const rightEye = landmarks[263];
+    
+    const toPx = (lm) => ({ x: lm.x * canvas.width, y: lm.y * canvas.height });
+    const le = toPx(leftEye), re = toPx(rightEye);
+    const eyePx = Math.hypot(le.x - re.x, le.y - re.y);
+    
+    if (eyePx > 20) {
+        estimatedDistance = (eyeDistanceCm * focalLength) / eyePx;
+        estimatedDistance = Math.min(100, Math.max(15, estimatedDistance));
+    }
+    
+    lastDistances.push(estimatedDistance);
+    if (lastDistances.length > 10) lastDistances.shift();
+    const smoothedDist = lastDistances.reduce((a,b) => a+b, 0) / lastDistances.length;
+    
+    updateDistanceUI(smoothedDist);
+    
+    ctx.strokeStyle = '#22d3ee';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(le.x, le.y);
+    ctx.lineTo(re.x, re.y);
+    ctx.stroke();
+    
+    drawEyeMark(le.x, le.y);
+    drawEyeMark(re.x, re.y);
+    
+    ctx.beginPath();
+    ctx.ellipse(canvas.width/2, canvas.height*0.45, canvas.width*0.23, canvas.height*0.28, 0, 0, 2*Math.PI);
+    ctx.strokeStyle = '#38bdf8';
+    ctx.setLineDash([8, 12]);
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.setLineDash([]);
+}
+
+function drawEyeMark(x, y) {
+    const mark = document.createElement('div');
+    mark.className = 'eye-mark';
+    mark.style.left = `${x}px`;
+    mark.style.top = `${y}px`;
+    guidesDiv.appendChild(mark);
+}
+
+function updateDistanceUI(dist) {
+    if (dist === null) {
+        distValSpan.innerText = '—';
+        distHintSpan.innerText = '🔍 Наведите камеру на лицо';
+        statusDiv.innerText = '🔴 Лицо не обнаружено';
+        progressDiv.style.width = '0%';
+        [redLight, yellowLight, greenLight].forEach(el => el.classList.remove('active'));
+        redLight.classList.add('active');
+        saveDistBtnMain.disabled = true;
+        exportBtnMain.disabled = true;
+        return;
+    }
+    
+    distValSpan.innerText = Math.round(dist);
+    
+    let score, msg, colorIdx;
+    if (dist >= 30 && dist <= 40) {
+        score = 100; msg = '✅ Идеальное расстояние!'; colorIdx = 2;
+    } else if ((dist >= 25 && dist < 30) || (dist > 40 && dist <= 50)) {
+        score = 60; msg = '🟡 Допустимо, но можно точнее'; colorIdx = 1;
+    } else if (dist < 25) {
+        score = 20; msg = '❌ Слишком близко! Отодвиньтесь'; colorIdx = 0;
+    } else {
+        score = 25; msg = '❌ Слишком далеко! Приблизьтесь'; colorIdx = 0;
+    }
+    
+    [redLight, yellowLight, greenLight].forEach(el => el.classList.remove('active'));
+    if (colorIdx === 0) redLight.classList.add('active');
+    else if (colorIdx === 1) yellowLight.classList.add('active');
+    else if (colorIdx === 2) greenLight.classList.add('active');
+    
+    statusDiv.innerText = msg;
+    progressDiv.style.width = score + '%';
+    
+    distBoxDiv.classList.toggle('pulse', Math.abs(dist - (parseFloat(distValSpan.dataset.last) || dist)) > 2);
+    distValSpan.dataset.last = dist;
+    
+    const isGood = (colorIdx === 2);
+    saveDistBtnMain.disabled = !isGood;
+    exportBtnMain.disabled = !isGood;
+    
+    if (dist < 30) distHintSpan.innerText = '💡 Отодвиньте телефон ещё немного';
+    else if (dist > 40) distHintSpan.innerText = '💡 Приблизьте телефон к лицу';
+    else distHintSpan.innerText = '🎯 Удерживайте это положение 30 секунд';
+}
+
+function toggleCalib() { calibPanelDiv.classList.toggle('show'); }
+function saveCalib() {
+    const val = parseFloat(eyeDistInputMain.value);
+    if (val < 4 || val > 10) return showToast('Введите 4–10 см');
+    eyeDistanceCm = val;
+    localStorage.setItem(STORAGE_KEY + '_eyeDist', val);
+    calibToggleBtn.innerHTML = `✅ ${val} см`;
+    showToast('Калибровка сохранена!');
+    toggleCalib();
+}
+function resetCalib() {
+    if (!confirm('Сбросить калибровку?')) return;
+    localStorage.removeItem(STORAGE_KEY + '_eyeDist');
+    eyeDistanceCm = 6.5;
+    eyeDistInputMain.value = '6.5';
+    calibToggleBtn.innerHTML = '⚙️ Калибровка';
+    showToast('Калибровка сброшена');
+}
+
+function saveDistance() {
+    if (estimatedDistance === null) return;
+    const data = {
+        distance: Math.round(estimatedDistance),
+        eyeDist: eyeDistanceCm,
+        date: new Date().toLocaleDateString('ru-RU'),
+        timestamp: Date.now()
+    };
+    localStorage.setItem(STORAGE_KEY + '_fixed', JSON.stringify(data));
+    showToast(`📌 Зафиксировано: ${data.distance} см`);
+}
+
+function exportMeasurement() {
+    if (estimatedDistance === null) return;
+    const fixed = JSON.parse(localStorage.getItem(STORAGE_KEY + '_fixed') || '{}');
+    const text = `📏 ЗАМЕР РАССТОЯНИЯ «Анти-ИИ»\nДата: ${new Date().toLocaleDateString('ru-RU')}\n\n` +
+        `🔹 Текущее расстояние: ${Math.round(estimatedDistance)} см\n` +
+        `🔹 Расстояние между глазами (калибровка): ${eyeDistanceCm} см\n` +
+        `🔹 Точность: ±2–3 см при стабильном освещении\n` +
+        (fixed.distance ? `\n📌 Зафиксированное значение: ${fixed.distance} см (${fixed.date})` : '') +
+        `\n\n⚠️ Для точного сравнения «было → стало»:\n• Используйте одно и то же расстояние\n• Один источник света\n• Одна поза`;
+    
+    const blob = new Blob([text], {type: 'text/plain;charset=utf-8'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `distance_${new Date().toISOString().slice(0,10)}.txt`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast('📤 Экспорт сохранён');
+}
+
+function clearData() {
+    if (!confirm('Удалить ВСЕ данные проекта?')) return;
+    localStorage.removeItem(STORAGE_KEY + '_eyeDist');
+    localStorage.removeItem(STORAGE_KEY + '_fixed');
+    calibToggleBtn.innerHTML = '⚙️ Калибровка';
+    showToast('🗑️ Данные удалены');
+}
+
+function copyPhoneNumber() {
+    navigator.clipboard.writeText("8-920-227-56-76").then(() => {
+        showToast('📋 Номер скопирован!');
+    }).catch(() => {
+        const input = document.createElement('input');
+        input.value = "8-920-227-56-76";
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+        showToast('📋 Номер скопирован!');
+    });
+}
+
+function showToast(m) { 
+    toastDiv.innerText = '✓ ' + m; 
+    toastDiv.classList.add('show'); 
+    setTimeout(() => toastDiv.classList.remove('show'), 2000); 
+}
+
+calibToggleBtn.onclick = toggleCalib;
+calibCloseBtn.onclick = toggleCalib;
+calibSaveBtn.onclick = saveCalib;
+calibResetBtn.onclick = resetCalib;
+saveDistBtnMain.onclick = saveDistance;
+exportBtnMain.onclick = exportMeasurement;
+deleteBtnMain.onclick = clearData;
+if (copyPhoneBtnMain) copyPhoneBtnMain.onclick = copyPhoneNumber;
+
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden && camera) camera.stop();
+    else if (!document.hidden && cameraActive && mainApp.style.display !== 'none') initMainApp();
+});
+</script>
+</body>
+</html>
